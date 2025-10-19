@@ -42,9 +42,9 @@ const SITE = "https://rromd.com/";
                           }));
 
         films.push({
-          tieu_de: title,
-          lien_ket: link,
-          hinh_anh: image,
+          name: title,
+          url: link,
+          img: image,
           tags
         });
       }
