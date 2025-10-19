@@ -21,30 +21,24 @@ async function fetchHTML(url) {
       const img = li.querySelector("img");
       const title = li.querySelector(".title");
 
-      const href = a?.href?.trim();
-      if (!href) continue;
+      if (!a) continue;
 
-      const id = href.match(/(\d+)/)?.[1] || `phim-${i + 1}`;
       const name = title?.textContent.trim() || `Phim ${i + 1}`;
       const imgUrl = img?.getAttribute("data-original") || img?.src || "";
-      const detailUrl = href.startsWith("http") ? href : `${BASE_URL}${href}`;
+      const detailUrl = a.href.startsWith("http") ? a.href : `${BASE_URL}${a.href}`;
 
+      // Lấy link play
       let playUrl = detailUrl;
       try {
         const detailDom = await fetchHTML(detailUrl);
-        const playLink = detailDom.window.document.querySelector(".playbtn");
-        if (playLink) playUrl = playLink.href.startsWith("http") ? playLink.href : `${BASE_URL}${playLink.href}`;
+        const playBtn = detailDom.window.document.querySelector(".playbtn");
+        if (playBtn) playUrl = playBtn.href.startsWith("http") ? playBtn.href : `${BASE_URL}${playBtn.href}`;
       } catch {}
 
-      channels.push({
-        id,
-        name,
-        image: { url: imgUrl, type: "contain", width: 1920, height: 1080 },
-        sources: [{ contents: [{ streams: [{ stream_links: [{ url: playUrl, type: "hls", default: true }] }] }] }]
-      });
+      channels.push({ name, image: imgUrl, url: playUrl });
     }
 
-    const data = { id: "phimmoichill", name: "Phim Mới Chill", groups: [{ id: "all", channels }] };
+    const data = { name: "Phim Mới Chill", channels };
 
     if (!fs.existsSync("json")) fs.mkdirSync("json");
     fs.writeFileSync("json/phim.json", JSON.stringify(data, null, 2));
