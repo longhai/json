@@ -12,28 +12,28 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout repo
+        uses: actions/checkout@v3
 
-      - name: Cài NodeJS
+      - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
           node-version: 20
 
-      - name: Cài thư viện cần thiết
+      - name: Cài thư viện
         run: |
-          cd ${{ github.workspace }}
-          echo "Khởi tạo npm project..."
+          cd json
           npm init -y
           npm install node-fetch@3 jsdom
 
       - name: Chạy script cập nhật
         run: |
-          cd ${{ github.workspace }}
+          cd json
           node script.js
 
       - name: Commit thay đổi
         run: |
-          cd ${{ github.workspace }}
+          cd json
           git config --global user.name "github-actions"
           git config --global user.email "actions@github.com"
           git add phim.json
