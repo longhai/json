@@ -2,7 +2,6 @@ import fs from "fs";
 import fetch from "node-fetch";
 import { JSDOM } from "jsdom";
 
-// 🔗 Đổi domain ở đây khi cần
 const BASE_URL = "https://rromd.com";
 const START_URL = `${BASE_URL}/`;
 
@@ -21,7 +20,7 @@ async function fetchHTML(url) {
 
 (async () => {
   try {
-    console.log("🔍 Đang tải danh sách từ:", START_URL);
+    console.log("🔍 Đang tải danh sách:", START_URL);
     const dom = await fetchHTML(START_URL);
     if (!dom) throw new Error("Không thể tải trang danh sách!");
 
@@ -44,14 +43,12 @@ async function fetchHTML(url) {
       const imgUrl = img?.getAttribute("data-original") || img?.src || "";
       const detailUrl = href.startsWith("http") ? href : `${BASE_URL}${href}`;
 
-      // 🔹 Lấy link play trực tiếp
+      // 🔹 Tìm nút play trong trang chi tiết
       let playUrl = detailUrl;
       try {
         const detailDom = await fetchHTML(detailUrl);
         if (detailDom) {
           const doc = detailDom.window.document;
-
-          // Ưu tiên nút playbtn
           const playBtn = doc.querySelector(".btn.playbtn");
           if (playBtn) {
             const hrefPlay = playBtn.getAttribute("href");
@@ -60,21 +57,10 @@ async function fetchHTML(url) {
                 ? hrefPlay
                 : `${BASE_URL}${hrefPlay}`;
             }
-          } else {
-            // Nếu không có playbtn, tìm thẻ <a> trong .videos .head
-            const headA = doc.querySelector(".videos .head a");
-            if (headA) {
-              const hrefPlay = headA.getAttribute("href");
-              if (hrefPlay?.includes("/vodplay/")) {
-                playUrl = hrefPlay.startsWith("http")
-                  ? hrefPlay
-                  : `${BASE_URL}${hrefPlay}`;
-              }
-            }
           }
         }
       } catch (err) {
-        console.warn(`⚠️ Không lấy được play URL cho ${name}: ${err.message}`);
+        console.warn(`⚠️ Không lấy được link play cho ${name}`);
       }
 
       channels.push({
@@ -84,18 +70,12 @@ async function fetchHTML(url) {
       });
     }
 
-    const data = {
-      name: "Phim Mới Chill",
-      description: "Danh sách phim cập nhật tự động",
-      source: BASE_URL,
-      channels
-    };
-
+    // ✅ JSON dạng mảng cho MonPlayer
     if (!fs.existsSync("json")) fs.mkdirSync("json");
-    fs.writeFileSync("json/phim.json", JSON.stringify(data, null, 2), "utf8");
+    fs.writeFileSync("json/phim.json", JSON.stringify(channels, null, 2), "utf8");
 
-    console.log(`✅ Hoàn tất! Tổng số video: ${channels.length}`);
-    console.log("📁 File lưu tại: json/phim.json");
+    console.log(`✅ Hoàn tất (${channels.length} video)`);
+    console.log("📁 File: json/phim.json");
   } catch (err) {
     console.error("❌ Lỗi tổng:", err);
   }
