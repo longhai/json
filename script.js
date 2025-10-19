@@ -1,98 +1,140 @@
 import fs from "fs";
 import fetch from "node-fetch";
 import { JSDOM } from "jsdom";
-import { URL } from "url";
 
-const SITE = "https://rromd.com/";
+const BASE_URL = "https://rromd.com";
+const START_URL = `${BASE_URL}/`;
+
+async function fetchHTML(url) {
+  const res = await fetch(url, {
+    headers: { "User-Agent": "Mozilla/5.0" }
+  });
+  return new JSDOM(await res.text());
+}
 
 (async () => {
   try {
-    console.log("Đang tải trang:", SITE);
-
-    const res = await fetch(SITE, {
-      headers: {
-        "User-Agent":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
-      },
-    });
-
-    const html = await res.text();
-    const dom = new JSDOM(html);
+    console.log("🔍 Đang tải danh sách từ:", START_URL);
+    const dom = await fetchHTML(START_URL);
     const document = dom.window.document;
 
-    const films = [];
+    const items = document.querySelectorAll(".videos li");
+    const channels = [];
 
-    // Lấy tất cả các item trong videos
-    document.querySelectorAll(".videos .item, .videos li.col-xs-6").forEach((el) => {
-      const a = el.querySelector("a");
-      const img = el.querySelector("img");
-      const title = el.querySelector(".title")?.textContent.trim()
-                    || el.querySelector("h5")?.textContent.trim()
-                    || "";
+    for (let i = 0; i < items.length; i++) {
+      const li = items[i];
+      const a = li.querySelector("a");
+      const img = li.querySelector("img");
+      const title = li.querySelector(".title");
 
-      if (a && img) {
-        const link = new URL(a.getAttribute("href"), SITE).href;
-        const image = img.getAttribute("data-original") || img.src;
+      const href = a?.getAttribute("href")?.trim();
+      if (!href) continue;
 
-        // Nếu có các tag liên quan, lưu luôn
-        const tags = Array.from(el.querySelectorAll("button a"))
-                          .map(btn => ({
-                            text: btn.textContent.trim(),
-                            link: new URL(btn.getAttribute("href"), SITE).href
-                          }));
+      const id = href.match(/(\d+)/)?.[1] || `phim-${i + 1}`;
+      const name = title?.textContent.trim() || `Phim ${i + 1}`;
+      const imgUrl = img?.getAttribute("data-original") || img?.src || "";
 
-        films.push({
-          name: title,
-          url: link,
-          img: image,
-          tags
-        });
+      const detailUrl = href.startsWith("http") ? href : `${BASE_URL}${href}`;
+
+      console.log(`🎬 Đang lấy chi tiết: ${name} (${detailUrl})`);
+
+      let playUrl = null;
+      try {
+        const detailDom = await fetchHTML(detailUrl);
+        const playLink = detailDom.window.document.querySelector(".playbtn");
+        if (playLink) {
+          const hrefPlay = playLink.getAttribute("href");
+          playUrl = hrefPlay.startsWith("http")
+            ? hrefPlay
+            : `${BASE_URL}${hrefPlay}`;
+        }
+      } catch (err) {
+        console.warn(`⚠️ Không lấy được link play cho ${name}: ${err.message}`);
       }
-    });
 
-    console.log(`Tìm thấy ${films.length} phim`);
-
-    // Lưu dữ liệu vào file JSON
-    if (!fs.existsSync("json")) fs.mkdirSync("json");
-    fs.writeFileSync("json/phim.json", JSON.stringify(films, null, 2), "utf8");
-    console.log("✅ Đã ghi dữ liệu vào json/phim.json");
-
-    // Lấy thông tin chi tiết từ trang phim
-    const filmDetails = [];
-
-    for (const film of films) {
-      const filmRes = await fetch(film.lien_ket, {
-        headers: {
-          "User-Agent":
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
+      channels.push({
+        id,
+        name,
+        description: "",
+        label: "Full",
+        image: {
+          url: imgUrl,
+          type: "contain",
+          width: 1920,
+          height: 1080
         },
-      });
-
-      const filmHtml = await filmRes.text();
-      const filmDom = new JSDOM(filmHtml);
-      const filmDocument = filmDom.window.document;
-
-      const rating = filmDocument.querySelector("li:contains('评分：') span")?.textContent.trim();
-      const views = filmDocument.querySelector("li:contains('播放量：') span")?.textContent.trim();
-      const uploadTime = filmDocument.querySelector("li:contains('上传时间：') span")?.textContent.trim();
-
-      filmDetails.push({
-        tieu_de: film.tieu_de,
-        lien_ket: film.lien_ket,
-        hinh_anh: film.hinh_anh,
-        tags: film.tags,
-        rating,
-        views,
-        uploadTime
+        display: "default",
+        type: "single",
+        enable_detail: true,
+        sources: [
+          {
+            id: `source-${i + 1}`,
+            name: "Server 1",
+            image: null,
+            contents: [
+              {
+                id: `content-${i + 1}`,
+                name: "Full",
+                image: null,
+                streams: [
+                  {
+                    id: `${id}-stream`,
+                    name: "Full",
+                    image: {
+                      url: imgUrl,
+                      type: "contain",
+                      width: 1920,
+                      height: 1080
+                    },
+                    stream_links: [
+                      {
+                        id: `${id}-s1`,
+                        name: "Xem ngay",
+                        url: playUrl || detailUrl,
+                        type: "hls",
+                        default: true,
+                        enableP2P: true,
+                        subtitles: null,
+                        remote_data: null,
+                        request_headers: null,
+                        comments: null
+                      }
+                    ]
+                  }
+                ]
+              }
+            ],
+            remote_data: null
+          }
+        ]
       });
     }
 
-    // Lưu thông tin chi tiết vào file JSON
-    fs.writeFileSync("json/phim_details.json", JSON.stringify(filmDetails, null, 2), "utf8");
-    console.log("✅ Đã ghi dữ liệu chi tiết vào json/phim_details.json");
+    const data = {
+      id: "phimmoichill",
+      name: "Phim Mới Chill",
+      description: "Danh sách phim mới cập nhật tự động",
+      url: BASE_URL,
+      color: "#181818",
+      grid_number: 2,
+      groups: [
+        {
+          id: "all",
+          name: "Tất cả phim",
+          display: "vertical",
+          grid_number: 1,
+          enable_detail: false,
+          channels
+        }
+      ]
+    };
 
+    if (!fs.existsSync("json")) fs.mkdirSync("json");
+    fs.writeFileSync("json/phim.json", JSON.stringify(data, null, 2), "utf8");
+
+    console.log(`✅ Hoàn tất! Tổng số phim: ${channels.length}`);
+    console.log("📁 File lưu tại: json/phim.json");
   } catch (err) {
-    console.error("❌ Lỗi:", err);
-    process.exit(1);
+    console.error("❌ Lỗi tổng:", err);
   }
 })();
