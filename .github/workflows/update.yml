@@ -1,8 +1,12 @@
 name: Update phim.json
 on:
   schedule:
-    - cron: "0 */6 * * *"  # chạy mỗi 6 tiếng
-  workflow_dispatch:        # cho phép bấm chạy thủ công
+    - cron: "0 */6 * * *"  # tự chạy 6 tiếng/lần
+  workflow_dispatch:        # cho phép bấm "Run workflow" thủ công
+
+permissions:
+  contents: write
+
 jobs:
   update:
     runs-on: ubuntu-latest
@@ -14,8 +18,10 @@ jobs:
         with:
           node-version: 20
 
-      - name: Cài thư viện
-        run: npm install node-fetch@3
+      - name: Cài thư viện cần thiết
+        run: |
+          npm init -y
+          npm install node-fetch@3 jsdom
 
       - name: Chạy script cập nhật
         run: node script.js
