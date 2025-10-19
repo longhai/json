@@ -2,37 +2,46 @@ import fs from "fs";
 import fetch from "node-fetch";
 import { JSDOM } from "jsdom";
 
-const urlSource = "https://phimmoichill.mx/";
+const URL = "https://phimmoichill.mx/";
 
-async function crawlSource() {
-  const res = await fetch(urlSource);
-  const html = await res.text();
-  const dom = new JSDOM(html);
-  const document = dom.window.document;
+(async () => {
+  try {
+    console.log("Đang tải trang:", URL);
+    const res = await fetch(URL, { headers: { "User-Agent": "Mozilla/5.0" } });
+    const html = await res.text();
 
-  const movies = [];
+    const dom = new JSDOM(html);
+    const document = dom.window.document;
 
-  // Ví dụ: tìm các thẻ phim trong trang chính
-  document.querySelectorAll(".movie-item a").forEach(elem => {
-    const link = elem.href;
-    const title = elem.querySelector(".movie-title")?.textContent.trim() || "";
-    const poster = elem.querySelector("img")?.src || "";
-    movies.push({
-      title,
-      link,
-      poster,
-      source: "phimmoichill.mx",
-      last_update: new Date().toISOString().split("T")[0]
+    // Tìm danh sách phim trong khối "Phim Đề Cử"
+    const films = [];
+    document.querySelectorAll(".block.top-slide li.item").forEach((el) => {
+      const name = el.querySelector("a p")?.textContent.trim() || "";
+      const href = el.querySelector("a")?.href || "";
+      const img = el.querySelector("img")?.src || "";
+      const label = el.querySelector(".label")?.textContent.trim() || "";
+
+      if (name && href) {
+        films.push({
+          ten_phim: name,
+          lien_ket: href,
+          anh: img,
+          thong_tin: label,
+        });
+      }
     });
-  });
 
-  return movies;
-}
+    console.log(`Tìm thấy ${films.length} phim`);
 
-async function main() {
-  const data = await crawlSource();
-  fs.writeFileSync("phim.json", JSON.stringify(data, null, 2));
-  console.log(`Crawl xong, lấy được ${data.length} phim.`);
-}
+    // Đảm bảo thư mục tồn tại
+    if (!fs.existsSync("json")) fs.mkdirSync("json");
 
-main().catch(e => console.error(e));
+    // Ghi ra file JSON
+    fs.writeFileSync("json/phim.json", JSON.stringify(films, null, 2), "utf8");
+    console.log("Đã ghi dữ liệu vào json/phim.json");
+
+  } catch (err) {
+    console.error("Lỗi:", err);
+    process.exit(1);
+  }
+})();
