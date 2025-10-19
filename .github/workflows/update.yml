@@ -15,11 +15,16 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v3
 
-      - name: Cài NodeJS và các thư viện cần thiết + chạy script
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 20
+
+      - name: Cài thư viện và chạy script
         run: |
-          cd json
-          npm init -y
-          npm install node-fetch@3 jsdom
+          echo "Cài jsdom và node-fetch..."
+          npm install jsdom node-fetch
+          echo "Chạy script cập nhật..."
           node script.js
 
       - name: Commit thay đổi
