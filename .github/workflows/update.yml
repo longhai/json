@@ -1,8 +1,8 @@
 name: Update phim.json
 on:
   schedule:
-    - cron: "0 */6 * * *"  # tự chạy 6 tiếng/lần
-  workflow_dispatch:        # cho phép bấm "Run workflow" thủ công
+    - cron: "0 */6 * * *"
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -10,6 +10,7 @@ permissions:
 jobs:
   update:
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v3
 
@@ -20,14 +21,19 @@ jobs:
 
       - name: Cài thư viện cần thiết
         run: |
+          cd ${{ github.workspace }}
+          echo "Khởi tạo npm project..."
           npm init -y
           npm install node-fetch@3 jsdom
 
       - name: Chạy script cập nhật
-        run: node script.js
+        run: |
+          cd ${{ github.workspace }}
+          node script.js
 
       - name: Commit thay đổi
         run: |
+          cd ${{ github.workspace }}
           git config --global user.name "github-actions"
           git config --global user.email "actions@github.com"
           git add phim.json
