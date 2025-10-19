@@ -2,29 +2,55 @@ import fs from "fs";
 import fetch from "node-fetch";
 import { JSDOM } from "jsdom";
 
-const URL = "https://rromd.com/"; 
+const BASE_URL = "https://rromd.com/"; // Trang gốc
+const START_URL = `${BASE_URL}/`; // Trang danh sách phim
+
+async function fetchHTML(url) {
+  const res = await fetch(url, {
+    headers: { "User-Agent": "Mozilla/5.0" }
+  });
+  return new JSDOM(await res.text());
+}
+
 (async () => {
   try {
-    console.log("Đang tải trang:", URL);
-    const res = await fetch(URL, { headers: { "User-Agent": "Mozilla/5.0" } });
-    const html = await res.text();
-
-    const dom = new JSDOM(html);
+    console.log("🔍 Đang tải danh sách từ:", START_URL);
+    const dom = await fetchHTML(START_URL);
     const document = dom.window.document;
 
+    const items = document.querySelectorAll(".videos li");
     const channels = [];
 
-    document.querySelectorAll(".videos li").forEach((li, i) => {
+    for (let i = 0; i < items.length; i++) {
+      const li = items[i];
       const a = li.querySelector("a");
       const img = li.querySelector("img");
       const title = li.querySelector(".title");
 
-      const href = a?.href?.trim() || "";
+      const href = a?.getAttribute("href")?.trim();
+      if (!href) continue;
+
       const id = href.match(/(\d+)/)?.[1] || `phim-${i + 1}`;
       const name = title?.textContent.trim() || `Phim ${i + 1}`;
       const imgUrl = img?.getAttribute("data-original") || img?.src || "";
 
-      if (!href) return;
+      const detailUrl = href.startsWith("http") ? href : `${BASE_URL}${href}`;
+
+      console.log(`🎬 Đang lấy chi tiết: ${name} (${detailUrl})`);
+
+      let playUrl = null;
+      try {
+        const detailDom = await fetchHTML(detailUrl);
+        const playLink = detailDom.window.document.querySelector(".playbtn");
+        if (playLink) {
+          const hrefPlay = playLink.getAttribute("href");
+          playUrl = hrefPlay.startsWith("http")
+            ? hrefPlay
+            : `${BASE_URL}${hrefPlay}`;
+        }
+      } catch (err) {
+        console.warn(`⚠️ Không lấy được link play cho ${name}: ${err.message}`);
+      }
 
       channels.push({
         id,
@@ -63,10 +89,8 @@ const URL = "https://rromd.com/";
                     stream_links: [
                       {
                         id: `${id}-s1`,
-                        name: "Server 1",
-                        url: href.startsWith("http")
-                          ? href
-                          : `${URL.replace(/\/$/, "")}${href}`,
+                        name: "Xem ngay",
+                        url: playUrl || detailUrl,
                         type: "hls",
                         default: true,
                         enableP2P: true,
@@ -84,19 +108,19 @@ const URL = "https://rromd.com/";
           }
         ]
       });
-    });
+    }
 
     const data = {
       id: "phimmoichill",
-      name: "Phim Moi Chill",
-      description: "Danh sách phim mới",
-      url: URL,
+      name: "Phim Mới Chill",
+      description: "Danh sách phim mới cập nhật tự động",
+      url: BASE_URL,
       color: "#181818",
       grid_number: 2,
       groups: [
         {
           id: "all",
-          name: "Tất cả",
+          name: "Tất cả phim",
           display: "vertical",
           grid_number: 1,
           enable_detail: false,
@@ -108,9 +132,9 @@ const URL = "https://rromd.com/";
     if (!fs.existsSync("json")) fs.mkdirSync("json");
     fs.writeFileSync("json/phim.json", JSON.stringify(data, null, 2), "utf8");
 
-    console.log("✅ Đã tạo file json/phim.json");
-    console.log(`📦 Gồm ${channels.length} phim`);
+    console.log(`✅ Hoàn tất! Tổng số phim: ${channels.length}`);
+    console.log("📁 File lưu tại: json/phim.json");
   } catch (err) {
-    console.error("❌ Lỗi:", err);
+    console.error("❌ Lỗi tổng:", err);
   }
 })();
