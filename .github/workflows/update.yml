@@ -22,16 +22,20 @@ jobs:
 
       - name: Cài thư viện và chạy script
         run: |
-          echo "Cài jsdom và node-fetch..."
           npm install jsdom node-fetch
-          echo "Chạy script cập nhật..."
           node script.js
+
+      - name: Đảm bảo thư mục json và file phim.json tồn tại
+        run: |
+          mkdir -p json
+          if [ ! -f json/phim.json ]; then
+            echo "[]" > json/phim.json
+          fi
 
       - name: Commit thay đổi
         run: |
-          cd json
           git config --global user.name "github-actions"
           git config --global user.email "actions@github.com"
-          git add phim.json
+          git add json/phim.json
           git commit -m "auto update phim.json" || echo "Không có thay đổi"
           git push
