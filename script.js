@@ -60,7 +60,7 @@ async function fetchHTML(url) {
       color: "#000000",
       description: "RoRromd - Phim mới cập nhật - Xem phim trực tuyến",
       image: { url: "https://rromd.com/favicon.ico", type: "cover", width: 512, height: 512 },
-      grid_number: 3,
+      grid_number: 1,
       url: BASE_URL,
       groups: [
         {
