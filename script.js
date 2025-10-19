@@ -39,35 +39,34 @@ async function fetchHTML(url) {
       channels.push({
         id,
         name,
-        image: { url: imgUrl, type: "contain", width: 1920, height: 1080 },
-        sources: [
-          {
-            contents: [
-              {
-                streams: [
-                  {
-                    stream_links: [
-                      { id: `${id}-s1`, url: playUrl, type: "hls", default: true }
-                    ]
-                  }
-                ]
-              }
-            ]
-          }
-        ]
+        description: "",
+        type: "single",
+        display: "text-below",
+        enable_detail: true,
+        remote_data: { url: playUrl },
+        image: { url: imgUrl, type: "contain", width: 320, height: 480 },
+        org_metadata: { title: name, description: "", image: imgUrl },
+        share: { url: detailUrl }
       });
     }
 
     const data = {
       id: "phimmoichill",
       name: "Phim Mới Chill",
+      color: "#000000",
+      description: "Danh sách phim mới cập nhật tự động",
+      image: { url: "", type: "cover", width: 512, height: 512 },
+      grid_number: 3,
+      url: BASE_URL,
       groups: [
         {
           id: "all",
-          name: "Tất cả phim",
-          channels
+          display: "slider",
+          channels,
+          enable_detail: false
         }
-      ]
+      ],
+      channels: []
     };
 
     if (!fs.existsSync("json")) fs.mkdirSync("json");
