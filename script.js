@@ -2,7 +2,7 @@ import fs from "fs";
 import fetch from "node-fetch";
 import { JSDOM } from "jsdom";
 
-const BASE_URL = "https://phimmoichill.mx"; // Trang gốc
+const BASE_URL = "https://rromd.com"; // Trang gốc
 const START_URL = `${BASE_URL}/`; // Trang danh sách phim
 
 async function fetchHTML(url) {
