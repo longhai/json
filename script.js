@@ -2,8 +2,7 @@ import fs from "fs";
 import fetch from "node-fetch";
 import { JSDOM } from "jsdom";
 
-const URL = "https://rromd.com/"; // hoặc đổi thành trang của bạn
-
+const URL = "https://rromd.com/"; 
 (async () => {
   try {
     console.log("Đang tải trang:", URL);
@@ -13,38 +12,105 @@ const URL = "https://rromd.com/"; // hoặc đổi thành trang của bạn
     const dom = new JSDOM(html);
     const document = dom.window.document;
 
-    const films = [];
+    const channels = [];
 
-    // ✅ Dò tất cả các phần tử phim trong div.videos
-    document.querySelectorAll(".videos li").forEach((li) => {
+    document.querySelectorAll(".videos li").forEach((li, i) => {
       const a = li.querySelector("a");
       const img = li.querySelector("img");
       const title = li.querySelector(".title");
 
-      const name = title?.textContent.trim() || "";
       const href = a?.href?.trim() || "";
-      const poster = img?.getAttribute("data-original") || img?.src || "";
+      const id = href.match(/(\d+)/)?.[1] || `phim-${i + 1}`;
+      const name = title?.textContent.trim() || `Phim ${i + 1}`;
+      const imgUrl = img?.getAttribute("data-original") || img?.src || "";
 
-      if (name && href) {
-        films.push({
-          ten_phim: name,
-          lien_ket: href.startsWith("http") ? href : `${URL.replace(/\/$/, "")}${href}`,
-          anh: poster,
-        });
-      }
+      if (!href) return;
+
+      channels.push({
+        id,
+        name,
+        description: "",
+        label: "Full",
+        image: {
+          url: imgUrl,
+          type: "contain",
+          width: 1920,
+          height: 1080
+        },
+        display: "default",
+        type: "single",
+        enable_detail: true,
+        sources: [
+          {
+            id: `source-${i + 1}`,
+            name: "Server 1",
+            image: null,
+            contents: [
+              {
+                id: `content-${i + 1}`,
+                name: "Full",
+                image: null,
+                streams: [
+                  {
+                    id: `${id}-stream`,
+                    name: "Full",
+                    image: {
+                      url: imgUrl,
+                      type: "contain",
+                      width: 1920,
+                      height: 1080
+                    },
+                    stream_links: [
+                      {
+                        id: `${id}-s1`,
+                        name: "Server 1",
+                        url: href.startsWith("http")
+                          ? href
+                          : `${URL.replace(/\/$/, "")}${href}`,
+                        type: "hls",
+                        default: true,
+                        enableP2P: true,
+                        subtitles: null,
+                        remote_data: null,
+                        request_headers: null,
+                        comments: null
+                      }
+                    ]
+                  }
+                ]
+              }
+            ],
+            remote_data: null
+          }
+        ]
+      });
     });
 
-    console.log(`Đã thu thập ${films.length} phim`);
+    const data = {
+      id: "phimmoichill",
+      name: "Phim Moi Chill",
+      description: "Danh sách phim mới",
+      url: URL,
+      color: "#181818",
+      grid_number: 2,
+      groups: [
+        {
+          id: "all",
+          name: "Tất cả",
+          display: "vertical",
+          grid_number: 1,
+          enable_detail: false,
+          channels
+        }
+      ]
+    };
 
-    // ✅ Đảm bảo có thư mục json
     if (!fs.existsSync("json")) fs.mkdirSync("json");
+    fs.writeFileSync("json/phim.json", JSON.stringify(data, null, 2), "utf8");
 
-    // ✅ Ghi kết quả ra file
-    fs.writeFileSync("json/phim.json", JSON.stringify(films, null, 2), "utf8");
-
-    console.log("Đã ghi dữ liệu vào json/phim.json");
+    console.log("✅ Đã tạo file json/phim.json");
+    console.log(`📦 Gồm ${channels.length} phim`);
   } catch (err) {
-    console.error("Lỗi:", err);
-    process.exit(1);
+    console.error("❌ Lỗi:", err);
   }
 })();
