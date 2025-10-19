@@ -2,24 +2,37 @@ import fs from "fs";
 import fetch from "node-fetch";
 import { JSDOM } from "jsdom";
 
-const BASE_URL = "https://rromd.com/"; // Trang gốc
+const BASE_URL = "https://rromd.com"; // Trang gốc KHÔNG có dấu "/" cuối
 const START_URL = `${BASE_URL}/`; // Trang danh sách phim
 
 async function fetchHTML(url) {
-  const res = await fetch(url, {
-    headers: { "User-Agent": "Mozilla/5.0" }
-  });
-  return new JSDOM(await res.text());
+  try {
+    const res = await fetch(url, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+        "Accept-Language": "vi,en;q=0.9",
+      },
+      timeout: 20000
+    });
+    const text = await res.text();
+    return new JSDOM(text);
+  } catch (err) {
+    console.warn(`⚠️ Lỗi tải ${url}: ${err.message}`);
+    return null;
+  }
 }
 
 (async () => {
   try {
     console.log("🔍 Đang tải danh sách từ:", START_URL);
     const dom = await fetchHTML(START_URL);
+    if (!dom) throw new Error("Không thể tải trang danh sách!");
     const document = dom.window.document;
 
     const items = document.querySelectorAll(".videos li");
     const channels = [];
+
+    console.log(`📄 Tìm thấy ${items.length} phim.`);
 
     for (let i = 0; i < items.length; i++) {
       const li = items[i];
@@ -36,20 +49,44 @@ async function fetchHTML(url) {
 
       const detailUrl = href.startsWith("http") ? href : `${BASE_URL}${href}`;
 
-      console.log(`🎬 Đang lấy chi tiết: ${name} (${detailUrl})`);
+      console.log(`🎬 Đang lấy chi tiết: ${name}`);
 
       let playUrl = null;
       try {
         const detailDom = await fetchHTML(detailUrl);
-        const playLink = detailDom.window.document.querySelector(".playbtn");
-        if (playLink) {
-          const hrefPlay = playLink.getAttribute("href");
-          playUrl = hrefPlay.startsWith("http")
-            ? hrefPlay
-            : `${BASE_URL}${hrefPlay}`;
+        if (detailDom) {
+          const doc = detailDom.window.document;
+
+          // Thử tìm link playbtn trước
+          const playBtn = doc.querySelector(".btn.playbtn");
+          if (playBtn) {
+            const hrefPlay = playBtn.getAttribute("href");
+            if (hrefPlay) {
+              playUrl = hrefPlay.startsWith("http")
+                ? hrefPlay
+                : `${BASE_URL}${hrefPlay}`;
+            }
+          }
+
+          // Nếu không có playbtn, thay link ảnh bằng link play
+          if (!playUrl) {
+            const headA = doc.querySelector(".videos .head a");
+            if (headA) {
+              const altHref = headA.getAttribute("href");
+              if (altHref?.includes("/vodplay/")) {
+                playUrl = altHref.startsWith("http")
+                  ? altHref
+                  : `${BASE_URL}${altHref}`;
+              }
+            }
+          }
+
+          // Dự phòng: nếu vẫn không có, giữ link chi tiết
+          if (!playUrl) playUrl = detailUrl;
         }
       } catch (err) {
         console.warn(`⚠️ Không lấy được link play cho ${name}: ${err.message}`);
+        playUrl = detailUrl;
       }
 
       channels.push({
@@ -90,7 +127,7 @@ async function fetchHTML(url) {
                       {
                         id: `${id}-s1`,
                         name: "Xem ngay",
-                        url: playUrl || detailUrl,
+                        url: playUrl,
                         type: "hls",
                         default: true,
                         enableP2P: true,
@@ -103,8 +140,7 @@ async function fetchHTML(url) {
                   }
                 ]
               }
-            ],
-            remote_data: null
+            ]
           }
         ]
       });
