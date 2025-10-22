@@ -2,20 +2,30 @@ name: Build IPTV list
 
 on:
   schedule:
-    - cron: "0 2 * * *" # chạy hàng ngày
-  workflow_dispatch:
+    - cron: "0 2 * * *" # chạy hàng ngày lúc 2h sáng (UTC)
+  workflow_dispatch: # cho phép bấm “Run workflow” thủ công
 
 jobs:
   update:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: 18
-      - run: npm install cheerio node-fetch
-      - run: node tv360.js
-      - uses: stefanzweifel/git-auto-commit-action@v4
+
+      - name: Cài thư viện cần thiết
+        run: npm install cheerio node-fetch@3
+
+      - name: Chạy script tạo IPTV
+        run: node tv360.js
+
+      - name: Kiểm tra file được tạo
+        run: ls -la
+
+      - name: Tự động commit file iptv.m3u
+        uses: stefanzweifel/git-auto-commit-action@v4
         with:
           commit_message: "Update iptv.m3u"
-          file_pattern: "iptv.m3u"
+          file_pattern: iptv.m3u
